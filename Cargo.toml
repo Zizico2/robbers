@@ -10,6 +10,7 @@ edition = "2024"
 bevy = { version = "0.20.0", default-features = false, features = ["std", "async_executor", "multi_threaded", "serialize"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+robbers-case = { path = "crates/robbers-case" }
 robbers-types = { path = "crates/robbers-types" }
 robbers-game = { path = "crates/robbers-game" }
 robbers-command = { path = "crates/robbers-command" }

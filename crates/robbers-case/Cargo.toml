@@ -1,0 +1,9 @@
+[package]
+name = "robbers-case"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+robbers-types.workspace = true
+serde.workspace = true
+serde_json.workspace = true

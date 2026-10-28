@@ -4602,6 +4602,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "robbers-case"
+version = "0.1.0"
+dependencies = [
+ "robbers-types",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "robbers-command"
 version = "0.1.0"
 dependencies = [
