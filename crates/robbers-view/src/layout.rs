@@ -6,7 +6,7 @@
 use bevy::prelude::*;
 
 pub(crate) const RADIUS: f32 = 64.0;
-const INSPECTOR_SPACE: f32 = 350.0;
+const INSPECTOR_SPACE: f32 = 430.0;
 const HORIZONTAL_MARGIN: f32 = 60.0;
 const VERTICAL_MARGIN: f32 = 240.0;
 const BOARD_WIDTH: f32 = 7.0 * 1.732_050_8 * RADIUS;

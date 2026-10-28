@@ -1,4 +1,6 @@
 //! Graphical presentation and human input. Gameplay lives in robbers-command.
+mod case_board;
+mod case_ui;
 mod hex_mesh;
 mod highlights;
 mod layout;
@@ -7,7 +9,6 @@ use bevy::{
     picking::pointer::PointerButton,
     prelude::*,
     render::view::screenshot::{Screenshot, ScreenshotCaptured, save_to_disk},
-    ui_widgets::Button,
 };
 use layout::{BoardLayout, BoardLayoutPlugin, BoardRoot, RADIUS};
 use robbers_command::{Feedback, GameCommand};
@@ -24,10 +25,7 @@ struct Hovered(Option<Hex>);
 #[derive(Component, Default, Clone)]
 struct Pawn;
 #[derive(Component, Default, Clone)]
-struct PlayerCard(u8);
-#[derive(Component, Default, Clone)]
 enum HudText {
-    Player(u8),
     #[default]
     Status,
     Counter,
@@ -44,6 +42,8 @@ impl Plugin for ViewPlugin {
                 hex_mesh::HexMeshPlugin,
                 occupancy::OccupancyPlugin,
                 highlights::HighlightPlugin,
+                case_ui::CaseUiPlugin,
+                case_board::CaseBoardPlugin,
             ))
             .add_systems(Startup, setup)
             .add_systems(Update, keyboard_input)
@@ -117,11 +117,7 @@ fn setup(
     }
     // Bevy 0.20 BSN: @scene inclusions and -- child separators.
     commands.queue_spawn_scene(header());
-    commands.queue_spawn_scene(sidebar());
     commands.queue_spawn_scene(footer());
-    for id in 0..4 {
-        commands.queue_spawn_scene(player_card(id));
-    }
 }
 
 fn header() -> impl Scene {
@@ -134,86 +130,9 @@ fn header() -> impl Scene {
             TextFont { font_size: px(38) }
             TextColor(PAPER)
             --
-            Text("CITY PATROL   /   MOVEMENT STUDY 01")
+            Text("HEX CITY   /   GETAWAY INVESTIGATION")
             TextFont { font_size: px(12) }
             TextColor(GOLD)
-        ]
-    }
-}
-
-fn sidebar() -> impl Scene {
-    bsn! {
-        Node { position_type: PositionType::Absolute, right: px(34), top: px(32), width: px(280),
-            flex_direction: FlexDirection::Column, row_gap: px(10) }
-        Children [
-            Text("THE CITY IS YOURS")
-            TextFont { font_size: px(12) }
-            TextColor(GOLD)
-            --
-            Text("37 blocks. Six directions.")
-            TextFont { font_size: px(20) }
-            TextColor(PAPER)
-            --
-            Text("Choose an investigator, then click a neighboring hex to move.")
-            TextFont { font_size: px(15) }
-            TextColor(MUTED)
-            --
-            Node { height: px(376) }
-            --
-            Text("YOUR NEXT STEP")
-            TextFont { font_size: px(12) }
-            TextColor(GOLD)
-            --
-            Text("Q  NW       W  NE\nA  W         D  E\nZ  SW       X  SE\n\n1 - 4       select investigator\nTab         next investigator\nR             reset patrol")
-            TextFont { font_size: px(15) }
-            TextColor(PAPER)
-            --
-            @reset_button()
-            --
-            Text("Free exploration. All tiles are walkable; investigators may share a block.")
-            TextFont { font_size: px(13) }
-            TextColor(MUTED)
-        ]
-    }
-}
-
-fn reset_button() -> impl Scene {
-    bsn! {
-        Button
-        Node { margin: UiRect::vertical(px(8)), padding: UiRect::all(px(12)),
-            border: px(1), border_radius: BorderRadius::all(px(6)), justify_content: JustifyContent::Center }
-        BorderColor::all(MUTED)
-        BackgroundColor(Color::srgb(0.12, 0.21, 0.24))
-        on(|event: On<PointerClick>, mut commands: Commands| {
-            if event.button == PointerButton::Primary { commands.trigger(GameCommand::Reset {}); }
-        })
-        Children [ Text("Reset patrol  /  R") TextFont { font_size: px(14) } TextColor(PAPER) ]
-    }
-}
-
-fn player_card(id: u8) -> impl Scene {
-    let color = Color::srgb_from_array(PLAYER_COLORS[id as usize]);
-    let name = PLAYER_NAMES[id as usize];
-    bsn! {
-        Button
-        PlayerCard(id)
-        Node { position_type: PositionType::Absolute, right: px(34), top: px(184 + id as u32 * 84),
-            width: px(280), height: px(72), padding: UiRect::all(px(14)),
-            border: px(1), border_radius: BorderRadius::all(px(8)), align_items: AlignItems::Center,
-            column_gap: px(14) }
-        BackgroundColor(Color::srgb(0.11, 0.19, 0.22))
-        BorderColor::all(MUTED)
-        on(move |event: On<PointerClick>, mut commands: Commands| {
-            if event.button == PointerButton::Primary { commands.trigger(GameCommand::Select { player: id }); }
-        })
-        Children [
-            Node { width: px(10), height: px(34), border_radius: BorderRadius::all(px(5)) }
-            BackgroundColor(color)
-            --
-            Text(name)
-            HudText::Player(id)
-            TextFont { font_size: px(16) }
-            TextColor(PAPER)
         ]
     }
 }
@@ -221,7 +140,7 @@ fn player_card(id: u8) -> impl Scene {
 fn footer() -> impl Scene {
     bsn! {
         Node { position_type: PositionType::Absolute, left: px(40), bottom: px(25),
-            flex_direction: FlexDirection::Column, row_gap: px(7) }
+            flex_direction: FlexDirection::Column, row_gap: px(7), max_width:percent(52) }
         Pickable::IGNORE
         Children [
             Text("HOVER A BLOCK TO IDENTIFY IT") HudText::Hover
@@ -236,11 +155,16 @@ fn footer() -> impl Scene {
     }
 }
 
-fn tile_click(event: On<PointerClick>, tiles: Query<&Hex, With<TileKind>>, mut commands: Commands) {
+fn tile_click(
+    event: On<PointerClick>,
+    tiles: Query<&Hex, With<TileKind>>,
+    mut commands: Commands,
+    case: case_ui::CaseInteraction,
+) {
     if event.button == PointerButton::Primary
         && let Ok(hex) = tiles.get(event.entity)
     {
-        commands.trigger(GameCommand::Step { q: hex.q, r: hex.r });
+        commands.trigger(case.tile_command(*hex));
     }
 }
 fn tile_hover(
@@ -263,14 +187,27 @@ fn tile_leave(
         hovered.0 = None;
     }
 }
-fn pawn_click(event: On<PointerClick>, players: Query<&Investigator>, mut commands: Commands) {
+fn pawn_click(
+    event: On<PointerClick>,
+    players: Query<(&Investigator, &Hex)>,
+    mut commands: Commands,
+    case: case_ui::CaseInteraction,
+) {
     if event.button == PointerButton::Primary
-        && let Ok(player) = players.get(event.entity)
+        && let Ok((player, hex)) = players.get(event.entity)
     {
-        commands.trigger(GameCommand::Select { player: player.id });
+        commands.trigger(if case.planning() {
+            case.tile_command(*hex)
+        } else {
+            GameCommand::Select { player: player.id }
+        });
     }
 }
-fn keyboard_input(keys: Res<ButtonInput<KeyCode>>, session: Res<Session>, mut commands: Commands) {
+fn keyboard_input(
+    keys: Res<ButtonInput<KeyCode>>,
+    case: case_ui::CaseInteraction,
+    mut commands: Commands,
+) {
     for (key, direction) in [
         (KeyCode::KeyD, Direction::E),
         (KeyCode::KeyW, Direction::Ne),
@@ -280,7 +217,7 @@ fn keyboard_input(keys: Res<ButtonInput<KeyCode>>, session: Res<Session>, mut co
         (KeyCode::KeyX, Direction::Se),
     ] {
         if keys.just_pressed(key) {
-            commands.trigger(GameCommand::Move { direction });
+            commands.trigger(case.direction_command(direction));
         }
     }
     for (id, key) in [
@@ -298,7 +235,7 @@ fn keyboard_input(keys: Res<ButtonInput<KeyCode>>, session: Res<Session>, mut co
     }
     if keys.just_pressed(KeyCode::Tab) {
         commands.trigger(GameCommand::Select {
-            player: (session.selected_player + 1) % 4,
+            player: (case.selected() + 1) % 4,
         });
     }
     if keys.just_pressed(KeyCode::KeyR) {
@@ -311,43 +248,14 @@ fn sync_ui(
     feedback: Res<Feedback>,
     hovered: Res<Hovered>,
     board: Res<Board>,
-    players: Query<(&Investigator, &Hex)>,
-    mut cards: Query<(&PlayerCard, &mut BorderColor, &mut BackgroundColor)>,
     mut texts: Query<(&mut Text, &HudText)>,
 ) {
-    for (card, mut border, mut background) in &mut cards {
-        let selected = session.selected_player == card.0;
-        *border = BorderColor::all(if selected {
-            GOLD
-        } else {
-            Color::srgb(0.22, 0.32, 0.34)
-        });
-        background.0 = if selected {
-            Color::srgb(0.17, 0.26, 0.28)
-        } else {
-            Color::srgb(0.10, 0.18, 0.21)
-        };
-    }
     for (mut text, kind) in &mut texts {
         let value = match kind {
-            HudText::Player(id) => {
-                let (_, hex) = players.iter().find(|(p, _)| p.id == *id).unwrap();
-                format!(
-                    "{}  /  {}\n{},{}  /  {}",
-                    id + 1,
-                    PLAYER_NAMES[*id as usize],
-                    hex.q,
-                    hex.r,
-                    if *id == session.selected_player {
-                        "SELECTED"
-                    } else {
-                        "READY"
-                    }
-                )
-            }
             HudText::Status => {
                 if feedback.0.is_empty() {
-                    "Explore the city. Highlighted hexes are your possible moves.".into()
+                    "Visit ? witnesses and press I to investigate. Press P to sketch the getaway."
+                        .into()
                 } else {
                     feedback.0.clone()
                 }

@@ -1,9 +1,9 @@
 # Robbers
 
-A small Bevy **0.20** prototype for a hex-city deduction board game. This first
-slice has a 37-hex city, eight kinds of illustrated tiles, four investigators,
-selection, and movement. Every adjacent hex is walkable in all six directions.
-Investigators can share tiles. The headless API also supports an authored mystery,
+A Bevy **0.20** prototype for a hex-city deduction board game. Solve **The Morning
+Escape**, a complete authored case with seven clues and one verified solution.
+The city has 37 hexes, eight illustrated tile kinds, and four selectable investigators. Every adjacent hex is walkable in all six directions.
+Investigators can share tiles. The graphical interface and headless API share the same investigation,
 private clue notebooks, route sketches and exact solution checking. See
 [Investigation API](docs/investigation-api.md) and [Case authoring](docs/case-authoring.md).
 There are no competitive turns or dice.
@@ -14,8 +14,9 @@ There are no competitive turns or dice.
 rtk cargo run
 ```
 
-Select an investigator with **1–4**, **Tab**, the player cards, or a pawn.
-Click a neighboring tile to move. Gold outlines show legal destinations.
+Read the case briefing beside the board. Select an investigator with **1–4**,
+**Tab**, the numbered buttons, or a pawn. Click a neighboring tile to move.
+Gold outlines show legal destinations.
 The six keyboard directions are:
 
 ```text
@@ -24,8 +25,21 @@ The six keyboard directions are:
          Z (SW)    X (SE)
 ```
 
-**R** resets the patrol. Hover a tile to see its name and axial coordinates.
-The illustrated paths have no effect on movement.
+Visit a **? witness** and press **I** or **Investigate** to record its evidence.
+Read the selected investigator's notebook; scroll over the inspector when needed.
+Recorded witnesses become green **+** markers. Switching investigators switches
+notebooks and route sketches.
+
+Press **P** or **Sketch** to plan the robbers' route. The sketch starts at the
+named bank. Click adjacent tiles or use the same six direction keys to extend it;
+the investigator stays in place. Gold-connected numbered badges show your sketch.
+**Backspace / Undo** removes its last tile, **C / Clear** empties it, and **Esc / P**
+returns to moving pawns. After clearing, click the bank to restart.
+
+Press **Enter / Submit** when your sketch contains exactly eight tiles ending at
+the named airport. A wrong route lets you retry; the exact ordered route solves
+the case. **R** resets every investigator's progress. Hover tiles for names and
+coordinates. Illustrated paths do not constrain movement.
 
 Occupied tiles have a translucent investigator-colored wash and a strong colored
 rim, rendered with cached procedural Bevy meshes and translucent materials. Shared tiles split into equal pie sections in player-ID order; numbered
@@ -106,11 +120,13 @@ with fewer crates for this smaller scope:
 
 | Crate | Responsibility |
 |---|---|
+| `robbers-case` | Authored JSON, precise evidence rules, public briefings |
+| `robbers-validator` | Bounded exhaustive uniqueness certification and authoring reports |
 | `robbers-types` | Hex coordinates, directions, tile kinds, investigator identity |
 | `robbers-game` | Deterministic board, ECS entities, session, stable snapshots |
 | `robbers-command` | Semantic commands, validation, atomic mutations, feedback, discovery |
 | `robbers-headless` | JSON-lines transport, no rendering dependencies |
-| `robbers-view` | Tile sprites, pawns, pointer/keyboard input, HUD, screenshots |
+| `robbers-view` | Tile sprites, pawns, witness markers, notebook, numbered route sketches, mode-aware input, screenshots |
 | root `robbers` | Arguments and plugin composition |
 
 Dependencies flow from view/headless through command/game to types. GUI input
@@ -176,6 +192,8 @@ objects used by the CLI and stops on the first invalid action.
 rtk cargo test --workspace --no-default-features --exclude robbers-view
 rtk cargo build --no-default-features
 rtk proxy python3 scripts/playtest.py
+rtk proxy python3 scripts/case_playtest.py
+rtk cargo run --no-default-features -- --validate-case
 
 # Graphical build and captured frame (requires a display and GPU/software adapter)
 rtk cargo run -- --screenshot docs/board.png
