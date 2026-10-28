@@ -7,3 +7,4 @@ edition.workspace = true
 bevy.workspace = true
 serde.workspace = true
 robbers-types.workspace = true
+robbers-case.workspace = true

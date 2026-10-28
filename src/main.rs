@@ -11,6 +11,23 @@ fn main() {
 }
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().is_some_and(|arg| arg == "--validate-case") {
+        if args.len() > 2 {
+            return Err("use --validate-case [JSON_PATH]".into());
+        }
+        let case = if let Some(path) = args.get(1) {
+            serde_json::from_reader(std::fs::File::open(path)?)?
+        } else {
+            robbers_case::bundled_case()
+        };
+        let report =
+            robbers_validator::validate_case(&case, &robbers_game::Board::default(), 1_000_000)?;
+        println!("{}", serde_json::to_string(&report)?);
+        if !report.unique {
+            return Err("case did not certify exactly one solution".into());
+        }
+        return Ok(());
+    }
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!(
             "Robbers — hex-city movement prototype\n\n  robbers                 graphical board\n  robbers --headless      deterministic JSON-lines on stdin/stdout\n  robbers --screenshot PATH   save a graphical frame, then exit\n  robbers --replay PATH   apply a JSON array of game commands before starting\n\nHeadless-only build: cargo run --no-default-features -- --headless"
