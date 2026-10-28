@@ -17,6 +17,7 @@ PAPER = "#f1e8ce"
 KINDS = ["residential", "market", "park", "bank", "airport", "police", "hospital", "school"]
 COLORS = {"residential": "#c9d4bc", "market": "#ddc7a4", "park": "#9dbba1", "bank": "#d8c994",
           "airport": "#b5c9ce", "police": "#acc4cd", "hospital": "#d4c7b9", "school": "#d0b89d"}
+PLAYER_COLORS = ["#df4d4a", "#4da3d6", "#efb247", "#50b892"]
 
 
 def font(size):
@@ -123,7 +124,7 @@ def tile(kind, variant=0):
     return im
 
 
-def pawn(color):
+def pawn(color, number):
     im = Image.new("RGBA", (96, 120))
     d = ImageDraw.Draw(im)
     d.ellipse((17, 91, 83, 111), fill="#172e3670")
@@ -133,6 +134,8 @@ def pawn(color):
     d.ellipse((26, 15, 70, 59), fill=color)
     d.arc((31, 20, 65, 53), 180, 260, fill="#fff0cd", width=4)
     d.line((35, 63, 32, 86), fill="#fff0cd", width=3)
+    d.text((49, 78), str(number), anchor="mm", font=font(24), fill=PAPER,
+           stroke_width=1, stroke_fill=INK)
     return im
 
 
@@ -144,10 +147,10 @@ def main():
         image = tile(kind)
         image.save(OUT / "tiles" / f"{kind}.png")
         preview.paste(image, ((index % 4)*SIZE, (index // 4)*SIZE), image)
-    for index, color in enumerate(["#df4d4a", "#4da3d6", "#efb247", "#50b892"]):
-        pawn(color).save(OUT / "pawns" / f"{index}.png")
+    for index, color in enumerate(PLAYER_COLORS):
+        pawn(color, index + 1).save(OUT / "pawns" / f"{index}.png")
     preview.save(OUT / "tile_catalog.png")
-    print("Generated 8 city tiles, 4 pawns, and tile_catalog.png")
+    print("Generated 8 city tiles, 4 numbered pawns, and tile_catalog.png")
 
 
 if __name__ == "__main__":

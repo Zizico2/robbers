@@ -13,12 +13,13 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!(
-            "Robbers — hex-city movement prototype\n\n  robbers                 graphical board\n  robbers --headless      deterministic JSON-lines on stdin/stdout\n  robbers --screenshot PATH   save a graphical frame, then exit\n\nHeadless-only build: cargo run --no-default-features -- --headless"
+            "Robbers — hex-city movement prototype\n\n  robbers                 graphical board\n  robbers --headless      deterministic JSON-lines on stdin/stdout\n  robbers --screenshot PATH   save a graphical frame, then exit\n  robbers --replay PATH   apply a JSON array of game commands before starting\n\nHeadless-only build: cargo run --no-default-features -- --headless"
         );
         return Ok(());
     }
     let mut headless = false;
     let mut screenshot = None;
+    let mut replay = None;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
@@ -26,6 +27,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             "--screenshot" => {
                 index += 1;
                 screenshot = Some(args.get(index).ok_or("--screenshot needs a path")?.clone());
+            }
+            "--replay" => {
+                index += 1;
+                replay = Some(args.get(index).ok_or("--replay needs a path")?.clone());
             }
             unknown => return Err(format!("unknown option {unknown}; use --help").into()),
         }
@@ -64,6 +69,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
     app.add_plugins((GamePlugin, CommandPlugin));
+    if let Some(path) = replay {
+        let commands: Vec<robbers_command::GameCommand> =
+            serde_json::from_reader(std::fs::File::open(path)?)?;
+        for (index, command) in commands.into_iter().enumerate() {
+            robbers_command::dispatch(app.world_mut(), command)
+                .map_err(|error| format!("replay command {}: {}", index + 1, error.message))?;
+        }
+    }
     if !headless {
         #[cfg(feature = "graphics")]
         {

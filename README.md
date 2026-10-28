@@ -24,6 +24,11 @@ The six keyboard directions are:
 **R** resets the patrol. Hover a tile to see its name and axial coordinates.
 The illustrated paths have no effect on movement.
 
+Occupied tiles have a translucent investigator-colored wash and a strong colored
+rim, rendered with cached procedural Bevy meshes and translucent materials. Shared tiles split into equal pie sections in player-ID order; numbered
+pawns sit in their matching sections. Empty tiles have no wash. The overlays
+ignore pointer picking so movement and pawn selection continue to work normally.
+
 The board fits the available window area beside the inspector, including 16:9,
 ultrawide, and tall tiled windows. Fitting is isolated in
 `crates/robbers-view/src/layout.rs`: one parent transform scales the board, and
@@ -145,6 +150,23 @@ rtk proxy python3 tools/generate_assets.py
 `assets/tile_catalog.png` previews the eight tiles. The graphical executable
 loads the workspace's `assets/` directory regardless of the current working
 directory; packaged distributions would need a relocatable asset path.
+
+Occupancy fills/rims and selected, legal-move, and hover outlines use cached
+`Mesh2d` geometry with `ColorMaterial`. The 1–4-player sectors follow the exact
+hex edges; no overlay PNGs are generated or loaded. All visuals inherit the
+board transform and ignore picking. Movement updates mesh handles and positions;
+it does not rebuild geometry. See `hex_mesh.rs`, `occupancy.rs`, and `highlights.rs`
+in `robbers-view`.
+
+To reproduce a shared-tile screenshot, replay normal movement commands before
+opening the view:
+
+```sh
+rtk cargo run -- --replay scripts/fixtures/shared_tile.json --screenshot docs/shared-tile.png
+```
+
+`--replay` also works with `--headless`. It reads a JSON array of the same command
+objects used by the CLI and stops on the first invalid action.
 
 ```sh
 # Fast, GPU-free rules and protocol tests

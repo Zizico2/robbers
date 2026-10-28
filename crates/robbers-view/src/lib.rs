@@ -1,5 +1,8 @@
 //! Graphical presentation and human input. Gameplay lives in robbers-command.
+mod hex_mesh;
+mod highlights;
 mod layout;
+mod occupancy;
 use bevy::{
     picking::pointer::PointerButton,
     prelude::*,
@@ -36,20 +39,15 @@ impl Plugin for ViewPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(ClearColor(INK))
             .init_resource::<Hovered>()
-            .add_plugins(BoardLayoutPlugin)
+            .add_plugins((
+                BoardLayoutPlugin,
+                hex_mesh::HexMeshPlugin,
+                occupancy::OccupancyPlugin,
+                highlights::HighlightPlugin,
+            ))
             .add_systems(Startup, setup)
             .add_systems(Update, keyboard_input)
-            // No deferred dependency between these presentation systems. 0.20's
-            // weak ordering preserves conflicts without serializing unrelated work.
-            .add_systems(
-                PostUpdate,
-                (
-                    sync_pawns.before(TransformSystems::Propagate),
-                    sync_ui,
-                    draw_highlights,
-                )
-                    .chain_weak(),
-            );
+            .add_systems(PostUpdate, sync_ui);
     }
 }
 
@@ -308,23 +306,6 @@ fn keyboard_input(keys: Res<ButtonInput<KeyCode>>, session: Res<Session>, mut co
     }
 }
 
-fn sync_pawns(mut players: Query<(&Investigator, &Hex, &mut Transform), With<Pawn>>) {
-    // Stable quadrants keep all four pieces visible when sharing one hex.
-    let positions: Vec<_> = players.iter().map(|(p, h, _)| (p.id, *h)).collect();
-    for (player, hex, mut transform) in &mut players {
-        let shared = positions.iter().filter(|(_, h)| h == hex).count() > 1;
-        let offset = if shared {
-            Vec2::new(
-                if player.id % 2 == 0 { -14.0 } else { 14.0 },
-                if player.id < 2 { 14.0 } else { -12.0 },
-            )
-        } else {
-            Vec2::new(0.0, 5.0)
-        };
-        transform.translation = (position(*hex) + offset).extend(5.0 + player.id as f32 * 0.01);
-    }
-}
-
 fn sync_ui(
     session: Res<Session>,
     feedback: Res<Feedback>,
@@ -389,61 +370,6 @@ fn sync_ui(
         if text.0 != value {
             text.0 = value;
         }
-    }
-}
-
-fn outline(gizmos: &mut Gizmos, center: Vec2, radius: f32, color: Color) {
-    let points: Vec<_> = (0..=6)
-        .map(|i| {
-            let angle = (90.0 + i as f32 * 60.0).to_radians();
-            center + Vec2::new(angle.cos(), angle.sin()) * radius
-        })
-        .collect();
-    gizmos.linestrip_2d(points, color);
-}
-fn draw_highlights(
-    mut gizmos: Gizmos,
-    session: Res<Session>,
-    board: Res<Board>,
-    hovered: Res<Hovered>,
-    layout: Res<BoardLayout>,
-    players: Query<(&Investigator, &Hex)>,
-) {
-    let (_, current) = players
-        .iter()
-        .find(|(p, _)| p.id == session.selected_player)
-        .unwrap();
-    let screen = |hex| position(hex) * layout.scale + layout.center;
-    outline(
-        &mut gizmos,
-        screen(*current),
-        (RADIUS - 2.0) * layout.scale,
-        GOLD,
-    );
-    outline(
-        &mut gizmos,
-        screen(*current),
-        (RADIUS - 4.0) * layout.scale,
-        GOLD,
-    );
-    for direction in Direction::ALL {
-        let hex = current.neighbor(direction);
-        if board.contains(hex) {
-            outline(
-                &mut gizmos,
-                screen(hex),
-                (RADIUS - 5.0) * layout.scale,
-                Color::srgba(0.87, 0.76, 0.49, 0.65),
-            );
-        }
-    }
-    if let Some(hex) = hovered.0 {
-        outline(
-            &mut gizmos,
-            screen(hex),
-            (RADIUS - 7.0) * layout.scale,
-            PAPER,
-        );
     }
 }
 
