@@ -1,14 +1,58 @@
 [
-  {"type": "move", "direction": "e"},
-  {"type": "move", "direction": "ne"},
-  {"type": "select", "player": 1},
-  {"type": "move", "direction": "w"},
-  {"type": "move", "direction": "sw"},
-  {"type": "select", "player": 2},
-  {"type": "move", "direction": "nw"},
-  {"type": "move", "direction": "nw"},
-  {"type": "select", "player": 3},
-  {"type": "move", "direction": "se"},
-  {"type": "move", "direction": "se"},
-  {"type": "select", "player": 0}
+  {
+    "type": "move",
+    "direction": "e"
+  },
+  {
+    "type": "move",
+    "direction": "ne"
+  },
+  {
+    "type": "end_turn"
+  },
+  {
+    "type": "begin_turn"
+  },
+  {
+    "type": "move",
+    "direction": "w"
+  },
+  {
+    "type": "move",
+    "direction": "sw"
+  },
+  {
+    "type": "end_turn"
+  },
+  {
+    "type": "begin_turn"
+  },
+  {
+    "type": "move",
+    "direction": "nw"
+  },
+  {
+    "type": "move",
+    "direction": "nw"
+  },
+  {
+    "type": "end_turn"
+  },
+  {
+    "type": "begin_turn"
+  },
+  {
+    "type": "move",
+    "direction": "se"
+  },
+  {
+    "type": "move",
+    "direction": "se"
+  },
+  {
+    "type": "end_turn"
+  },
+  {
+    "type": "begin_turn"
+  }
 ]

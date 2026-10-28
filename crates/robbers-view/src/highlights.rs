@@ -79,6 +79,7 @@ fn sync_highlights(
             }
             Highlight::Hovered => hovered.0,
             Highlight::Legal(index) if case.planning() => planned.get(index).copied(),
+            Highlight::Legal(_) if !case.can_move() => None,
             Highlight::Legal(index) => {
                 let hex = current.neighbor(Direction::ALL[index]);
                 board.contains(hex).then_some(hex)

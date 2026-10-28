@@ -1,0 +1,5 @@
+[
+  {"type": "investigate"},
+  {"type": "move", "direction": "e"},
+  {"type": "end_turn"}
+]

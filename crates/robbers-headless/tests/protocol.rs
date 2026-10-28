@@ -57,7 +57,7 @@ fn normal_snapshots_and_errors_never_disclose_hidden_evidence_or_the_solution() 
     assert!(!output.contains("crossing_guard"));
     process_line(
         app.world_mut(),
-        r#"{"method":"command","command":{"type":"select","player":1}}"#,
+        r#"{"method":"command","command":{"type":"end_turn"}}"#,
     );
     assert!(
         !process_line(app.world_mut(), r#"{"method":"state"}"#)

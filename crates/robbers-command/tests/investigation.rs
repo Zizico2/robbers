@@ -8,6 +8,12 @@ fn app() -> App {
     app
 }
 fn send(app: &mut App, command: GameCommand) -> Snapshot {
+    if let GameCommand::Select { player } = command {
+        while snapshot(app.world_mut()).selected_player != player {
+            dispatch(app.world_mut(), GameCommand::EndTurn {}).unwrap();
+            dispatch(app.world_mut(), GameCommand::BeginTurn {}).unwrap();
+        }
+    }
     dispatch(app.world_mut(), command).unwrap()
 }
 fn plan(app: &mut App, route: &[(i32, i32)]) {
@@ -94,19 +100,34 @@ fn wrong_guesses_allow_retry_correct_guesses_solve_and_reset_clears_every_notebo
     assert_eq!(wrong.notebook.last_submission, Some(Verdict::Incorrect));
     assert_eq!(wrong.notebook.attempts, 1);
     assert!(!wrong.notebook.solved);
+    assert_eq!(wrong.turn.actions_remaining, 1);
     plan(&mut app, &ANSWER);
     let won = send(&mut app, GameCommand::SubmitRoute {});
     assert_eq!(won.notebook.last_submission, Some(Verdict::Correct));
     assert_eq!(won.notebook.attempts, 2);
     assert!(won.notebook.solved);
-    assert!(dispatch(app.world_mut(), GameCommand::PlanUndo {}).is_err());
-    assert_eq!(snapshot(app.world_mut()), won);
-    let other = send(&mut app, GameCommand::Select { player: 1 });
-    assert!(!other.notebook.solved && other.notebook.plan.is_empty());
-    send(&mut app, GameCommand::Investigate {});
+    assert_eq!(won.turn.phase, robbers_game::TurnPhase::Finished);
+    assert_eq!(won.turn.winner, Some(0));
+    for command in [
+        GameCommand::PlanUndo {},
+        GameCommand::EndTurn {},
+        GameCommand::BeginTurn {},
+        GameCommand::Select { player: 1 },
+        GameCommand::Move {
+            direction: robbers_types::Direction::E,
+        },
+    ] {
+        assert_eq!(
+            dispatch(app.world_mut(), command).unwrap_err().code,
+            "game_finished"
+        );
+        assert_eq!(snapshot(app.world_mut()), won);
+    }
     let reset = send(&mut app, GameCommand::Reset {});
     assert!(reset.notebook.plan.is_empty() && reset.notebook.clues.is_empty());
     assert_eq!(reset.notebook.attempts, 0);
+    assert_eq!(reset.turn.winner, None);
+    assert_eq!(reset.turn.actions_remaining, 2);
     assert!(reset.revision > won.revision);
     assert!(
         send(&mut app, GameCommand::Select { player: 1 })

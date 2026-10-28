@@ -1,8 +1,8 @@
 # Working on Robbers
 
 - Prefix shell commands with `rtk` (use `rtk proxy` for commands without a filter).
-- This prototype implements a solo investigation: board movement, clue notebooks,
-  route sketches, exact guesses and authoring validation. Competitive turns are future work.
+- This prototype implements a local pass-and-play investigation: board movement, clue notebooks,
+  route sketches, exact guesses, authoring validation and two-action pass-and-play turns.
 - `robbers-command::dispatch` is the single gameplay write path. Human input,
   scripts and future remote adapters must use the same commands and validation.
 - Keep the game/headless crates independent of graphics, assets, a display and time.
@@ -24,3 +24,9 @@
   A search-budget exhaustion must never count as a uniqueness proof.
 - Test the full mystery with `rtk proxy python3 scripts/case_playtest.py`.
 - Mouse and keyboard adapters must honor move/sketch mode using the same commands.
+
+- Turn rules: move/investigate/submit cost one of two actions; sketching is free.
+  Only `end_turn` followed by `begin_turn` advances the active player. Direct
+  `select` cannot change actors. Handoff snapshots and UI must hide notebooks.
+- A correct route ends the game; only reset remains available. Invalid actions
+  must not spend points. The normal protocol uses schema version 2.

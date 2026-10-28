@@ -2,11 +2,11 @@
 
 A Bevy **0.20** prototype for a hex-city deduction board game. Solve **The Morning
 Escape**, a complete authored case with seven clues and one verified solution.
-The city has 37 hexes, eight illustrated tile kinds, and four selectable investigators. Every adjacent hex is walkable in all six directions.
+The city has 37 hexes, eight illustrated tile kinds, and four investigators taking turns. Every adjacent hex is walkable in all six directions.
 Investigators can share tiles. The graphical interface and headless API share the same investigation,
 private clue notebooks, route sketches and exact solution checking. See
 [Investigation API](docs/investigation-api.md) and [Case authoring](docs/case-authoring.md).
-There are no competitive turns or dice.
+Turns use two actions with explicit handoff; there are no dice.
 
 ## Play
 
@@ -14,9 +14,20 @@ There are no competitive turns or dice.
 rtk cargo run
 ```
 
-Read the case briefing beside the board. Select an investigator with **1–4**,
-**Tab**, the numbered buttons, or a pawn. Click a neighboring tile to move.
-Gold outlines show legal destinations.
+Scarlet (player 1) starts. The banner names the active investigator, round, and
+remaining actions. Each turn gives **2 actions**. Moving one hex, investigating,
+or submitting a complete route costs **1 action**. Reading clues and editing
+route sketches are free. Failed actions spend nothing.
+
+Click a neighboring tile to move; gold outlines show legal destinations while
+you have actions left. You cannot select another investigator, including through
+keyboard shortcuts, pawn clicks or the CLI. The numbered strip shows turn order.
+
+Press **E / End turn** when ready, even if you have unused actions. The game
+passes to the next investigator and hides their notebook. **Enter / Begin turn**
+reveals their notes and grants two actions. After player 4, a new round starts.
+Using your last action does not automatically pass the turn, so you can finish
+reading or sketching first.
 The six keyboard directions are:
 
 ```text
@@ -27,8 +38,8 @@ The six keyboard directions are:
 
 Visit a **? witness** and press **I** or **Investigate** to record its evidence.
 Read the selected investigator's notebook; scroll over the inspector when needed.
-Recorded witnesses become green **+** markers. Switching investigators switches
-notebooks and route sketches.
+Recorded witnesses become green **+** markers. Each investigator retains a
+private notebook and route sketch between turns.
 
 Press **P** or **Sketch** to plan the robbers' route. The sketch starts at the
 named bank. Click adjacent tiles or use the same six direction keys to extend it;
@@ -38,13 +49,13 @@ returns to moving pawns. After clearing, click the bank to restart.
 
 Press **Enter / Submit** when your sketch contains exactly eight tiles ending at
 the named airport. A wrong route lets you retry; the exact ordered route solves
-the case. **R** resets every investigator's progress. Hover tiles for names and
+the case and ends the game. **R** resets every investigator's progress. Hover tiles for names and
 coordinates. Illustrated paths do not constrain movement.
 
 Occupied tiles have a translucent investigator-colored wash and a strong colored
 rim, rendered with cached procedural Bevy meshes and translucent materials. Shared tiles split into equal pie sections in player-ID order; numbered
 pawns sit in their matching sections. Empty tiles have no wash. The overlays
-ignore pointer picking so movement and pawn selection continue to work normally.
+ignore pointer picking so movement and route picking continue to work normally.
 
 The board fits the available window area beside the inspector, including 16:9,
 ultrawide, and tall tiled windows. Fitting is isolated in
@@ -75,7 +86,7 @@ command is fully applied before its response. EOF or `quit` exits cleanly.
 {"id":2,"method":"state"}
 {"id":3,"method":"command","command":{"type":"select","player":0}}
 {"id":4,"method":"command","command":{"type":"move","direction":"e"}}
-{"id":5,"method":"command","command":{"type":"step","q":0,"r":0}}
+{"id":5,"method":"command","command":{"type":"step","q":2,"r":0}}
 {"id":6,"method":"command","command":{"type":"reset"}}
 {"id":7,"method":"quit"}
 ```
@@ -91,9 +102,11 @@ steps and off-board movement return structured errors and keep the session alive
 Failed actions leave gameplay state and revision unchanged.
 
 Snapshots include `schema_version`, monotonically increasing `revision`,
-`selected_player` (stable IDs **0–3**), `moves`, `tiles`, sorted `players`, and
-`legal_moves` with directions and destination coordinates. Select increments
-revision; movement increments revision and moves. Reset restores positions,
+`selected_player` (the active investigator, stable IDs **0–3**), `moves`, `tiles`, sorted `players`, and
+`legal_moves` with directions and destination coordinates. Accepted commands increment
+revision; movement also increments moves. `select` only accepts the active player.
+The schema-2 `turn` field reports round, active player, action budget, phase and
+winner. `end_turn` starts a private handoff; `begin_turn` reveals the next notebook. Reset restores positions,
 selection and move count while still increasing revision. A snapshot uses
 coordinates and player IDs, never unstable Bevy entity IDs.
 

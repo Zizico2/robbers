@@ -220,24 +220,6 @@ fn keyboard_input(
             commands.trigger(case.direction_command(direction));
         }
     }
-    for (id, key) in [
-        KeyCode::Digit1,
-        KeyCode::Digit2,
-        KeyCode::Digit3,
-        KeyCode::Digit4,
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        if keys.just_pressed(key) {
-            commands.trigger(GameCommand::Select { player: id as u8 });
-        }
-    }
-    if keys.just_pressed(KeyCode::Tab) {
-        commands.trigger(GameCommand::Select {
-            player: (case.selected() + 1) % 4,
-        });
-    }
     if keys.just_pressed(KeyCode::KeyR) {
         commands.trigger(GameCommand::Reset {});
     }
@@ -254,16 +236,26 @@ fn sync_ui(
         let value = match kind {
             HudText::Status => {
                 if feedback.0.is_empty() {
-                    "Visit ? witnesses and press I to investigate. Press P to sketch the getaway."
-                        .into()
+                    "Your turn: move, investigate, or sketch. End turn to pass.".into()
                 } else {
                     feedback.0.clone()
                 }
             }
+            HudText::Counter if session.phase == robbers_game::TurnPhase::Finished => format!(
+                "CASE CLOSED / {} WINS",
+                PLAYER_NAMES[session.selected_player as usize].to_uppercase()
+            ),
+            HudText::Counter if session.phase == robbers_game::TurnPhase::Handoff => format!(
+                "ROUND {} / HANDOFF TO PLAYER {}",
+                session.round,
+                session.selected_player + 1
+            ),
             HudText::Counter => {
                 format!(
-                    "{} MOVES   /   FREE EXPLORATION   /   REV {}",
-                    session.moves, session.revision
+                    "ROUND {} / PLAYER {} / {} ACTIONS LEFT",
+                    session.round,
+                    session.selected_player + 1,
+                    session.actions_remaining
                 )
             }
             HudText::Hover => hovered

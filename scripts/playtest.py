@@ -54,6 +54,27 @@ class Driver:
         assert "result" in response, response
         return response["result"]
 
+    def next_turn(self):
+        self.command("end_turn")
+        return self.command("begin_turn")
+
+    def turn_to(self, player):
+        state = self.request("state")["result"]
+        if state["turn"]["phase"] == "handoff":
+            state = self.command("begin_turn")
+        while state["selected_player"] != player:
+            state = self.next_turn()
+        return state
+
+    def act(self, kind, **params):
+        """Spend an action, cycling ordinary turns back to this actor if needed."""
+        state = self.request("state")["result"]
+        if state["turn"]["actions_remaining"] == 0:
+            player = state["selected_player"]
+            self.next_turn()
+            self.turn_to(player)
+        return self.command(kind, **params)
+
     def close(self):
         if self.process.poll() is None:
             self.request("quit")
@@ -79,19 +100,19 @@ def path(start, target, tiles):
 def main():
     driver = Driver(Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / "target/debug/robbers")
     try:
-        assert driver.request("schema")["result"]["schema_version"] == 1
+        assert driver.request("schema")["result"]["schema_version"] == 2
         initial = driver.request("state")["result"]
         tiles = {(t["hex"]["q"], t["hex"]["r"]) for t in initial["tiles"]}
         assert len(tiles) == 37
         count = 0
         for player in range(4):
-            state = driver.command("select", player=player)
+            state = driver.turn_to(player)
             for target in sorted(tiles):
                 pos = state["players"][player]["hex"]
                 for direction in path((pos["q"], pos["r"]), target, tiles):
                     before = state
-                    state = driver.command("move", direction=direction)
-                    assert state["revision"] == before["revision"] + 1
+                    state = driver.act("move", direction=direction)
+                    assert state["revision"] > before["revision"]
                     assert state["moves"] == before["moves"] + 1
                     for other in range(4):
                         if other != player:

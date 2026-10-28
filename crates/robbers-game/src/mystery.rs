@@ -106,7 +106,7 @@ pub struct DiscoveredClue {
     pub witness: String,
     pub statement: String,
 }
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NotebookSnapshot {
     pub clues: Vec<DiscoveredClue>,
     pub plan: Vec<Hex>,
