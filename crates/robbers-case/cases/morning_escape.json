@@ -1,0 +1,21 @@
+{
+  "id": "morning_escape",
+  "title": "The Morning Escape",
+  "briefing": "A getaway car left West Bank and reached South Airport before the morning rush. Reconstruct its eight-tile journey. Every step enters an adjacent hex, and no tile was visited twice.",
+  "bank": {"q": -3, "r": 1},
+  "airport": {"q": 1, "r": 2},
+  "route_length": 8,
+  "clues": [
+    {"id": "school_camera", "at": {"q": 2, "r": -1}, "witness": "Traffic dispatch", "evidence": {"type": "visits", "kind": "school"}},
+    {"id": "garden_clock", "at": {"q": -2, "r": 2}, "witness": "Park keeper", "evidence": {"type": "at_step", "step": 3, "kind": "park"}},
+    {"id": "patrol_radio", "at": {"q": -2, "r": 1}, "witness": "Patrol officer", "evidence": {"type": "before", "first": "police", "second": "park"}},
+    {"id": "market_delivery", "at": {"q": -1, "r": 2}, "witness": "Market vendor", "evidence": {"type": "immediately_after", "first": "park", "second": "market"}},
+    {"id": "crossing_guard", "at": {"q": 0, "r": 2}, "witness": "Crossing guard", "evidence": {"type": "departs", "kind": "school", "direction": "nw"}},
+    {"id": "airport_camera", "at": {"q": 1, "r": 2}, "witness": "Airport security", "evidence": {"type": "final_move", "direction": "se"}},
+    {"id": "hospital_camera", "at": {"q": -1, "r": -1}, "witness": "Hospital security", "evidence": {"type": "avoids", "kind": "hospital"}}
+  ],
+  "solution": [
+    {"q": -3, "r": 1}, {"q": -2, "r": 1}, {"q": -2, "r": 2}, {"q": -1, "r": 2},
+    {"q": 0, "r": 2}, {"q": 0, "r": 1}, {"q": 1, "r": 1}, {"q": 1, "r": 2}
+  ]
+}
