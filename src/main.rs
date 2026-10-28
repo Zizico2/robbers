@@ -30,13 +30,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!(
-            "Robbers — hex-city movement prototype\n\n  robbers                 graphical board\n  robbers --headless      deterministic JSON-lines on stdin/stdout\n  robbers --screenshot PATH   save a graphical frame, then exit\n  robbers --replay PATH   apply a JSON array of game commands before starting\n\nHeadless-only build: cargo run --no-default-features -- --headless"
+            "Robbers — hex-city movement prototype\n\n  robbers                 graphical board\n  robbers --headless      deterministic JSON-lines on stdin/stdout\n  robbers --screenshot PATH   save a graphical frame, then exit\n  robbers --replay PATH   apply a JSON array of game commands before starting\n  robbers --case PATH     load and validate an authored case\n  robbers --validate-case [PATH]   certify case uniqueness\n\nHeadless-only build: cargo run --no-default-features -- --headless"
         );
         return Ok(());
     }
     let mut headless = false;
     let mut screenshot = None;
     let mut replay = None;
+    let mut case_path = None;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
@@ -48,6 +49,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             "--replay" => {
                 index += 1;
                 replay = Some(args.get(index).ok_or("--replay needs a path")?.clone());
+            }
+            "--case" => {
+                index += 1;
+                case_path = Some(args.get(index).ok_or("--case needs a JSON path")?.clone());
             }
             unknown => return Err(format!("unknown option {unknown}; use --help").into()),
         }
@@ -84,6 +89,15 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         return Err(
             "this build has no graphics; use --headless or build with --features graphics".into(),
         );
+    }
+    if let Some(path) = case_path {
+        let case: robbers_case::CaseDefinition =
+            serde_json::from_reader(std::fs::File::open(path)?)?;
+        let board = robbers_game::Board::default();
+        if !robbers_validator::validate_case(&case, &board, 1_000_000)?.unique {
+            return Err("custom case must certify exactly one solution".into());
+        }
+        app.insert_resource(robbers_game::Mystery::new(case, &board)?);
     }
     app.add_plugins((GamePlugin, CommandPlugin));
     if let Some(path) = replay {
