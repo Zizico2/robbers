@@ -3,7 +3,10 @@
 A small Bevy **0.20** prototype for a hex-city deduction board game. This first
 slice has a 37-hex city, eight kinds of illustrated tiles, four investigators,
 selection, and movement. Every adjacent hex is walkable in all six directions.
-Investigators can share tiles. There are no turns, dice, clues, or robber routes yet.
+Investigators can share tiles. The headless API also supports an authored mystery,
+private clue notebooks, route sketches and exact solution checking. See
+[Investigation API](docs/investigation-api.md) and [Case authoring](docs/case-authoring.md).
+There are no competitive turns or dice.
 
 ## Play
 

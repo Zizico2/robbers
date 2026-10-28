@@ -1,5 +1,7 @@
 //! Authoritative board and ECS state. No camera, assets, window, or wall-clock rules.
+mod mystery;
 use bevy::prelude::*;
+pub use mystery::*;
 use robbers_types::*;
 use serde::{Deserialize, Serialize};
 
@@ -81,6 +83,8 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Board>()
             .init_resource::<Session>()
+            .init_resource::<Mystery>()
+            .init_resource::<Investigation>()
             .register_type::<Hex>()
             .register_type::<Investigator>()
             .register_type::<TileKind>()
@@ -118,6 +122,10 @@ pub struct Snapshot {
     pub tiles: Vec<Tile>,
     pub players: Vec<PlayerSnapshot>,
     pub legal_moves: Vec<LegalMove>,
+    pub case: robbers_case::CaseBriefing,
+    /// Only the selected investigator's knowledge and sketch are exposed.
+    pub notebook: NotebookSnapshot,
+    pub plan_legal_moves: Vec<Hex>,
 }
 pub fn snapshot(world: &mut World) -> Snapshot {
     let mut query = world.query::<(&Investigator, &Hex)>();
@@ -132,6 +140,9 @@ pub fn snapshot(world: &mut World) -> Snapshot {
     players.sort_by_key(|player| player.id);
     let session = world.resource::<Session>();
     let board = world.resource::<Board>();
+    let mystery = world.resource::<Mystery>();
+    let notebooks = world.resource::<Investigation>();
+    let notebook = &notebooks.notebooks[session.selected_player as usize];
     let position = players
         .iter()
         .find(|p| p.id == session.selected_player)
@@ -155,5 +166,8 @@ pub fn snapshot(world: &mut World) -> Snapshot {
         tiles: board.tiles.clone(),
         players,
         legal_moves,
+        case: mystery.briefing(),
+        notebook: mystery.notebook_snapshot(notebook),
+        plan_legal_moves: mystery.plan_destinations(notebook, board),
     }
 }
