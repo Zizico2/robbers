@@ -6,7 +6,7 @@ use crate::{
     position,
 };
 use bevy::prelude::*;
-use robbers_game::{Board, Session};
+use robbers_game::Board;
 use robbers_types::{Direction, Hex, Investigator};
 
 #[derive(Component)]
@@ -56,7 +56,7 @@ fn spawn_highlights(
 }
 
 fn sync_highlights(
-    session: Res<Session>,
+    case: crate::case_ui::CaseInteraction,
     board: Res<Board>,
     hovered: Res<Hovered>,
     players: Query<(&Investigator, &Hex)>,
@@ -64,13 +64,21 @@ fn sync_highlights(
 ) {
     let current = *players
         .iter()
-        .find(|(p, _)| p.id == session.selected_player)
+        .find(|(p, _)| p.id == case.selected())
         .unwrap()
         .1;
+    let planned = case.plan_destinations(&board);
     for (kind, mut transform, mut visibility) in &mut highlights {
         let hex = match *kind {
-            Highlight::Selected => Some(current),
+            Highlight::Selected => {
+                if case.planning() {
+                    case.plan().last().copied()
+                } else {
+                    Some(current)
+                }
+            }
             Highlight::Hovered => hovered.0,
+            Highlight::Legal(index) if case.planning() => planned.get(index).copied(),
             Highlight::Legal(index) => {
                 let hex = current.neighbor(Direction::ALL[index]);
                 board.contains(hex).then_some(hex)

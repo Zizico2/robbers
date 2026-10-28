@@ -30,7 +30,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!(
-            "Robbers — hex-city movement prototype\n\n  robbers                 graphical board\n  robbers --headless      deterministic JSON-lines on stdin/stdout\n  robbers --screenshot PATH   save a graphical frame, then exit\n  robbers --replay PATH   apply a JSON array of game commands before starting\n  robbers --case PATH     load and validate an authored case\n  robbers --validate-case [PATH]   certify case uniqueness\n\nHeadless-only build: cargo run --no-default-features -- --headless"
+            "Robbers — hex-city deduction prototype\n\n  robbers                 graphical board\n  robbers --headless      deterministic JSON-lines on stdin/stdout\n  robbers --screenshot PATH   save a graphical frame, then exit\n  robbers --replay PATH   apply a JSON array of game commands before starting\n  robbers --case PATH     load and validate an authored case\n  robbers --validate-case [PATH]   certify case uniqueness\n\nHeadless-only build: cargo run --no-default-features -- --headless"
         );
         return Ok(());
     }
@@ -77,7 +77,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     })
                     .set(WindowPlugin {
                         primary_window: Some(Window {
-                            title: "ROBBERS / City patrol".into(),
+                            title: "ROBBERS / Investigation".into(),
                             resolution: (1360, 900).into(),
                             ..default()
                         }),
