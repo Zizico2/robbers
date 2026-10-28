@@ -67,6 +67,15 @@ impl Board {
     }
 }
 
+impl robbers_case::CityMap for Board {
+    fn kind(&self, hex: Hex) -> Option<TileKind> {
+        self.kind(hex)
+    }
+    fn tile_count(&self) -> usize {
+        self.tiles.len()
+    }
+}
+
 pub struct GamePlugin;
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {

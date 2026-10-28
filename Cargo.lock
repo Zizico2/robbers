@@ -4594,9 +4594,11 @@ name = "robbers"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "robbers-case",
  "robbers-command",
  "robbers-game",
  "robbers-headless",
+ "robbers-validator",
  "robbers-view",
  "serde_json",
 ]
@@ -4626,6 +4628,7 @@ name = "robbers-game"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "robbers-case",
  "robbers-types",
  "serde",
 ]
@@ -4645,6 +4648,16 @@ name = "robbers-types"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "serde",
+]
+
+[[package]]
+name = "robbers-validator"
+version = "0.1.0"
+dependencies = [
+ "robbers-case",
+ "robbers-game",
+ "robbers-types",
  "serde",
 ]
 

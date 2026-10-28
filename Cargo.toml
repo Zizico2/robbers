@@ -11,6 +11,7 @@ bevy = { version = "0.20.0", default-features = false, features = ["std", "async
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 robbers-case = { path = "crates/robbers-case" }
+robbers-validator = { path = "crates/robbers-validator" }
 robbers-types = { path = "crates/robbers-types" }
 robbers-game = { path = "crates/robbers-game" }
 robbers-command = { path = "crates/robbers-command" }
@@ -26,6 +27,8 @@ default-run = "robbers"
 [dependencies]
 bevy.workspace = true
 robbers-game.workspace = true
+robbers-case.workspace = true
+robbers-validator.workspace = true
 robbers-command.workspace = true
 robbers-headless.workspace = true
 robbers-view = { workspace = true, optional = true }

@@ -14,5 +14,18 @@ after the first landmark, or the final move. This keeps prose and validation in
 agreement. Every clue has a stable ID, witness, and location to investigate.
 
 `CaseDefinition::validate` checks identity, locations, endpoints, route structure,
-and consistency of every clue with the author's route. A separate exhaustive
-validator will certify uniqueness using the public constraints.
+and consistency of every clue with the author's route. `robbers-validator`
+enumerates legal simple paths using endpoints, route length and the public clues,
+independently of the stored solution. Distance-to-airport pruning removes only
+branches that cannot reach the endpoint in time. Search is bounded at a million
+nodes; an incomplete search never certifies uniqueness.
+
+```sh
+rtk cargo run --no-default-features -- --validate-case
+rtk cargo run --no-default-features -- --validate-case path/to/case.json
+```
+
+This authoring command reports candidate and matching route counts, search work,
+completion and uniqueness. It exits nonzero for invalid, ambiguous or incomplete
+cases. It does not print the hidden path. This is separate from the normal
+JSON-lines gameplay API.

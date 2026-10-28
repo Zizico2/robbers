@@ -1,0 +1,12 @@
+[package]
+name = "robbers-validator"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+robbers-case.workspace = true
+robbers-types.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+robbers-game.workspace = true
