@@ -1,9 +1,11 @@
 //! Authoritative board and ECS state. No camera, assets, window, or wall-clock rules.
 mod mystery;
+mod turn;
 use bevy::prelude::*;
 pub use mystery::*;
 use robbers_types::*;
 use serde::{Deserialize, Serialize};
+pub use turn::*;
 
 pub const BOARD_RADIUS: i32 = 3;
 pub const STARTS: [Hex; 4] = [
@@ -13,13 +15,55 @@ pub const STARTS: [Hex; 4] = [
     Hex::new(0, -2),
 ];
 
-#[derive(Resource, Reflect, Debug, Default)]
+#[derive(Resource, Reflect, Debug)]
 #[reflect(Resource)]
 pub struct Session {
     pub selected_player: u8,
     /// Increases after each accepted command, including reset. Never rolls back.
     pub revision: u64,
     pub moves: u64,
+    pub round: u32,
+    pub actions_remaining: u8,
+    pub phase: TurnPhase,
+    pub winner: Option<u8>,
+}
+impl Default for Session {
+    fn default() -> Self {
+        Self {
+            selected_player: 0,
+            revision: 0,
+            moves: 0,
+            round: 1,
+            actions_remaining: ACTIONS_PER_TURN,
+            phase: TurnPhase::Playing,
+            winner: None,
+        }
+    }
+}
+impl Session {
+    pub fn can_spend_action(&self) -> bool {
+        self.phase == TurnPhase::Playing && self.actions_remaining > 0
+    }
+    pub fn visible_notebook(
+        &self,
+        mystery: &Mystery,
+        investigation: &Investigation,
+    ) -> NotebookSnapshot {
+        if self.phase == TurnPhase::Handoff {
+            NotebookSnapshot::default()
+        } else {
+            mystery.notebook_snapshot(&investigation.notebooks[self.selected_player as usize])
+        }
+    }
+    pub fn turn_snapshot(&self) -> TurnSnapshot {
+        TurnSnapshot {
+            round: self.round,
+            active_player: self.selected_player,
+            actions_remaining: self.actions_remaining,
+            phase: self.phase,
+            winner: self.winner,
+        }
+    }
 }
 
 #[derive(Resource, Reflect, Debug)]
@@ -126,6 +170,7 @@ pub struct Snapshot {
     /// Only the selected investigator's knowledge and sketch are exposed.
     pub notebook: NotebookSnapshot,
     pub plan_legal_moves: Vec<Hex>,
+    pub turn: TurnSnapshot,
 }
 pub fn snapshot(world: &mut World) -> Snapshot {
     let mut query = world.query::<(&Investigator, &Hex)>();
@@ -150,6 +195,7 @@ pub fn snapshot(world: &mut World) -> Snapshot {
         .hex;
     let legal_moves = Direction::ALL
         .into_iter()
+        .filter(|_| session.can_spend_action())
         .filter_map(|direction| {
             let destination = position.neighbor(direction);
             board.contains(destination).then_some(LegalMove {
@@ -159,7 +205,7 @@ pub fn snapshot(world: &mut World) -> Snapshot {
         })
         .collect();
     Snapshot {
-        schema_version: 1,
+        schema_version: 2,
         revision: session.revision,
         selected_player: session.selected_player,
         moves: session.moves,
@@ -167,7 +213,12 @@ pub fn snapshot(world: &mut World) -> Snapshot {
         players,
         legal_moves,
         case: mystery.briefing(),
-        notebook: mystery.notebook_snapshot(notebook),
-        plan_legal_moves: mystery.plan_destinations(notebook, board),
+        notebook: session.visible_notebook(mystery, notebooks),
+        plan_legal_moves: if session.phase == TurnPhase::Playing {
+            mystery.plan_destinations(notebook, board)
+        } else {
+            vec![]
+        },
+        turn: session.turn_snapshot(),
     }
 }

@@ -9,6 +9,23 @@ fn app() -> App {
     app
 }
 fn send(app: &mut App, command: GameCommand) -> Snapshot {
+    let current = snapshot(app.world_mut()).selected_player;
+    let target = if let GameCommand::Select { player } = command {
+        player
+    } else {
+        current
+    };
+    if target != current
+        || (command.costs_action() && snapshot(app.world_mut()).turn.actions_remaining == 0)
+    {
+        loop {
+            dispatch(app.world_mut(), GameCommand::EndTurn {}).unwrap();
+            dispatch(app.world_mut(), GameCommand::BeginTurn {}).unwrap();
+            if snapshot(app.world_mut()).selected_player == target {
+                break;
+            }
+        }
+    }
     dispatch(app.world_mut(), command).unwrap()
 }
 
@@ -96,7 +113,7 @@ fn invalid_commands_are_atomic_and_cannot_teleport() {
 }
 
 #[test]
-fn selection_moves_only_that_player_and_reset_preserves_revision_order() {
+fn turn_rotation_moves_only_the_active_player_and_reset_preserves_revision_order() {
     let mut app = app();
     let initial = snapshot(app.world_mut());
     send(&mut app, GameCommand::Select { player: 2 });
@@ -117,7 +134,7 @@ fn selection_moves_only_that_player_and_reset_preserves_revision_order() {
     assert_eq!(reset.players, initial.players);
     assert_eq!(reset.selected_player, 0);
     assert_eq!(reset.moves, 0);
-    assert_eq!(reset.revision, 3);
+    assert!(reset.revision > moved.revision);
 }
 
 #[test]
@@ -156,7 +173,8 @@ fn observer_and_direct_controller_produce_the_same_state() {
     let mut direct = app();
     let mut observed = app();
     let commands = [
-        GameCommand::Select { player: 1 },
+        GameCommand::EndTurn {},
+        GameCommand::BeginTurn {},
         GameCommand::Move {
             direction: Direction::W,
         },
@@ -178,6 +196,14 @@ fn long_deterministic_walk_always_reports_correct_legal_moves() {
     let mut second = app();
     let mut seed = 41u64;
     for _ in 0..500 {
+        if snapshot(first.world_mut()).turn.actions_remaining == 0 {
+            for _ in 0..4 {
+                for app in [&mut first, &mut second] {
+                    send(app, GameCommand::EndTurn {});
+                    send(app, GameCommand::BeginTurn {});
+                }
+            }
+        }
         let state = snapshot(first.world_mut());
         seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
         let next = &state.legal_moves[seed as usize % state.legal_moves.len()];
