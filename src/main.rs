@@ -1,14 +1,25 @@
+#[cfg(not(target_arch = "wasm32"))]
 use bevy::{app::ScheduleRunnerPlugin, prelude::*};
+#[cfg(not(target_arch = "wasm32"))]
 use robbers_command::CommandPlugin;
+#[cfg(not(target_arch = "wasm32"))]
 use robbers_game::GamePlugin;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
 
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    robbers_app::run();
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn main() {
     if let Err(error) = run() {
         eprintln!("robbers: {error}");
         std::process::exit(1);
     }
 }
+#[cfg(not(target_arch = "wasm32"))]
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().is_some_and(|arg| arg == "--validate-case") {
@@ -69,21 +80,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         #[cfg(feature = "graphics")]
         {
-            app.add_plugins(
-                DefaultPlugins
-                    .set(AssetPlugin {
-                        file_path: format!("{}/assets", env!("CARGO_MANIFEST_DIR")),
-                        ..default()
-                    })
-                    .set(WindowPlugin {
-                        primary_window: Some(Window {
-                            title: "ROBBERS / Investigation".into(),
-                            resolution: (1360, 900).into(),
-                            ..default()
-                        }),
-                        ..default()
-                    }),
-            );
+            robbers_app::configure_graphics(&mut app);
         }
         #[cfg(not(feature = "graphics"))]
         return Err(
@@ -111,9 +108,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     if !headless {
         #[cfg(feature = "graphics")]
         {
-            app.add_plugins(robbers_view::ViewPlugin);
+            app.add_plugins(robbers_app::ViewPlugin);
             if let Some(path) = screenshot {
-                robbers_view::capture_and_exit(&mut app, path);
+                robbers_app::capture_and_exit(&mut app, path);
             }
         }
     }

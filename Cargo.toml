@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
-members = [".", "crates/*"]
+members = ["crates/*", "platforms/android"]
+default-members = ["."]
 
 [workspace.package]
 version = "0.1.0"
@@ -17,6 +18,7 @@ robbers-game = { path = "crates/robbers-game" }
 robbers-command = { path = "crates/robbers-command" }
 robbers-headless = { path = "crates/robbers-headless" }
 robbers-view = { path = "crates/robbers-view" }
+robbers-app = { path = "crates/robbers-app", default-features = false }
 
 [package]
 name = "robbers"
@@ -31,12 +33,12 @@ robbers-case.workspace = true
 robbers-validator.workspace = true
 robbers-command.workspace = true
 robbers-headless.workspace = true
-robbers-view = { workspace = true, optional = true }
+robbers-app = { workspace = true, optional = true, features = ["graphics"] }
 serde_json.workspace = true
 
 [features]
 default = ["graphics", "dev"]
-graphics = ["dep:robbers-view"]
+graphics = ["dep:robbers-app"]
 dev = ["graphics", "bevy/dynamic_linking"]
 
 [profile.dev]

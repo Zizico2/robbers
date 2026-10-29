@@ -10,7 +10,7 @@ use bevy::{
     prelude::*,
     render::view::screenshot::{Screenshot, ScreenshotCaptured, save_to_disk},
 };
-use layout::{BoardLayout, BoardLayoutPlugin, BoardRoot, RADIUS};
+use layout::{BoardLayout, BoardLayoutPlugin, BoardRoot, RADIUS, ResponsiveNode};
 use robbers_command::{Feedback, GameCommand};
 use robbers_game::{Board, Session};
 use robbers_types::*;
@@ -125,6 +125,7 @@ fn header() -> impl Scene {
         Node { position_type: PositionType::Absolute, left: px(40), top: px(26),
             flex_direction: FlexDirection::Column, row_gap: px(5) }
         Pickable::IGNORE
+        ResponsiveNode::DesktopOnly
         Children [
             Text("R O B B E R S")
             TextFont { font_size: px(38) }
@@ -142,14 +143,15 @@ fn footer() -> impl Scene {
         Node { position_type: PositionType::Absolute, left: px(40), bottom: px(25),
             flex_direction: FlexDirection::Column, row_gap: px(7), max_width:percent(52) }
         Pickable::IGNORE
+        ResponsiveNode::Footer
         Children [
-            Text("HOVER A BLOCK TO IDENTIFY IT") HudText::Hover
+            Text("HOVER A BLOCK TO IDENTIFY IT") HudText::Hover ResponsiveNode::DesktopOnly
             TextFont { font_size: px(12) } TextColor(GOLD)
             --
-            Text("Explore the city. The highlighted hexes are your possible moves.") HudText::Status
+            Text("Explore the city. The highlighted hexes are your possible moves.") HudText::Status ResponsiveNode::Status
             TextFont { font_size: px(15) } TextColor(PAPER)
             --
-            Text("0 MOVES  /  PROTOTYPE") HudText::Counter
+            Text("0 MOVES  /  PROTOTYPE") HudText::Counter ResponsiveNode::DesktopOnly
             TextFont { font_size: px(11) } TextColor(MUTED)
         ]
     }
@@ -189,18 +191,16 @@ fn tile_leave(
 }
 fn pawn_click(
     event: On<PointerClick>,
-    players: Query<(&Investigator, &Hex)>,
+    players: Query<&Hex, With<Investigator>>,
     mut commands: Commands,
     case: case_ui::CaseInteraction,
 ) {
     if event.button == PointerButton::Primary
-        && let Ok((player, hex)) = players.get(event.entity)
+        && let Ok(hex) = players.get(event.entity)
     {
-        commands.trigger(if case.planning() {
-            case.tile_command(*hex)
-        } else {
-            GameCommand::Select { player: player.id }
-        });
+        // A pawn covers part of its hex, especially on phones. Tapping it must
+        // act on the shared tile, rather than trying to change the turn's actor.
+        commands.trigger(case.tile_command(*hex));
     }
 }
 fn keyboard_input(

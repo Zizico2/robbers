@@ -1,0 +1,33 @@
+[package]
+name = "robbers-android"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+name = "robbers_android"
+crate-type = ["cdylib"]
+
+[target.'cfg(target_os = "android")'.dependencies]
+bevy = { workspace = true, features = ["android-native-activity"] }
+robbers-app = { workspace = true, features = ["graphics"] }
+
+[package.metadata.android]
+package = "org.zizico.robbers"
+apk_name = "robbers"
+assets = "../../assets"
+build_targets = ["aarch64-linux-android"]
+strip = "strip"
+
+[package.metadata.android.sdk]
+min_sdk_version = 26
+target_sdk_version = 35
+
+[package.metadata.android.application]
+label = "Robbers"
+theme = "@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"
+
+[package.metadata.android.application.activity]
+orientation = "sensorLandscape"
+config_changes = "orientation|keyboardHidden|screenSize|screenLayout|smallestScreenSize|density|uiMode"
+exported = true

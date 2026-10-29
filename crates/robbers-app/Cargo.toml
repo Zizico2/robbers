@@ -1,0 +1,14 @@
+[package]
+name = "robbers-app"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = ["graphics"]
+graphics = ["dep:robbers-view"]
+
+[dependencies]
+bevy.workspace = true
+robbers-game.workspace = true
+robbers-command.workspace = true
+robbers-view = { workspace = true, optional = true }
