@@ -24,6 +24,11 @@
   A search-budget exhaustion must never count as a uniqueness proof.
 - Test the full mystery with `rtk proxy python3 scripts/case_playtest.py`.
 - Mouse and keyboard adapters must honor move/sketch mode using the same commands.
+- Android (`platforms/android`) and web use `robbers-app` for shared graphical startup.
+  Keep viewport rules in `robbers-view/src/layout.rs`. Short landscape windows
+  use the compact UI and touch-scrollable Notes overlay.
+- Export with `scripts/build_android.py` / `scripts/build_web.py`; these select LLVM
+  for cross builds. Android assets must use the packaged reader, web assets relative URLs.
 
 - Turn rules: move/investigate/submit cost one of two actions; sketching is free.
   Only `end_turn` followed by `begin_turn` advances the active player. Direct

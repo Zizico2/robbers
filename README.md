@@ -8,6 +8,10 @@ private clue notebooks, route sketches and exact solution checking. See
 [Investigation API](docs/investigation-api.md) and [Case authoring](docs/case-authoring.md).
 Turns use two actions with explicit handoff; there are no dice.
 
+Tentative **landscape Android APK** and **WebGL 2 browser** exports share the
+desktop game and UI. See [Android and web previews](docs/platforms.md) for builds,
+installation and touch controls.
+
 ## Play
 
 ```sh
@@ -140,6 +144,8 @@ with fewer crates for this smaller scope:
 | `robbers-command` | Semantic commands, validation, atomic mutations, feedback, discovery |
 | `robbers-headless` | JSON-lines transport, no rendering dependencies |
 | `robbers-view` | Tile sprites, pawns, witness markers, notebook, numbered route sketches, mode-aware input, screenshots |
+| `robbers-app` | Shared graphical startup and platform asset/window configuration |
+| `robbers-android` | NativeActivity entry point and APK metadata |
 | root `robbers` | Arguments and plugin composition |
 
 Dependencies flow from view/headless through command/game to types. GUI input

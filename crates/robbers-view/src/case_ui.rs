@@ -1,12 +1,9 @@
 //! Case controls and notebook. Every gameplay action uses the shared command API.
+use crate::layout::{BoardLayout, NotebookOpen, ResponsiveNode};
 use crate::{GOLD, MUTED, PAPER};
 use bevy::{
-    ecs::system::SystemParam,
-    input::mouse::{MouseScrollUnit, MouseWheel},
-    picking::pointer::PointerButton,
-    prelude::*,
-    ui::InteractionDisabled,
-    ui_widgets::Button,
+    ecs::system::SystemParam, input::mouse::MouseScrollUnit, picking::pointer::PointerButton,
+    prelude::*, ui::InteractionDisabled, ui_widgets::Button,
 };
 use robbers_command::GameCommand;
 use robbers_game::{Board, Investigation, Mystery, Session, TurnPhase, Verdict};
@@ -16,6 +13,8 @@ use robbers_types::{Direction, Hex, PLAYER_COLORS, PLAYER_NAMES};
 pub(super) struct PlanningMode(pub bool);
 #[derive(Event)]
 struct TogglePlanning;
+#[derive(Event)]
+struct ToggleNotebook;
 #[derive(Component, Clone, Default)]
 struct TurnBadge(u8);
 #[derive(Component, Clone, Default)]
@@ -39,6 +38,7 @@ enum Action {
     Primary,
     Command(GameCommand),
     Toggle,
+    Notebook,
 }
 
 #[derive(Component, Clone, Default)]
@@ -111,16 +111,28 @@ impl Plugin for CaseUiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<PlanningMode>()
             .add_observer(toggle_planning)
-            .add_observer(|event: On<GameCommand>, mut mode: ResMut<PlanningMode>| {
-                if matches!(
-                    event.event(),
-                    GameCommand::Reset {} | GameCommand::EndTurn {} | GameCommand::BeginTurn {}
-                ) {
-                    mode.0 = false;
-                }
-            })
+            .add_observer(
+                |_: On<ToggleNotebook>, mut open: ResMut<NotebookOpen>, session: Res<Session>| {
+                    if session.phase != TurnPhase::Handoff {
+                        open.0 = !open.0;
+                    }
+                },
+            )
+            .add_observer(
+                |event: On<GameCommand>,
+                 mut mode: ResMut<PlanningMode>,
+                 mut notes: ResMut<NotebookOpen>| {
+                    if matches!(
+                        event.event(),
+                        GameCommand::Reset {} | GameCommand::EndTurn {} | GameCommand::BeginTurn {}
+                    ) {
+                        mode.0 = false;
+                        notes.0 = false;
+                    }
+                },
+            )
             .add_systems(Startup, setup_ui)
-            .add_systems(Update, (case_keys, scroll_notebook))
+            .add_systems(Update, (case_keys, reset_notebook_scroll))
             .add_systems(PostUpdate, (sync_case_ui, sync_action_buttons).chain_weak());
     }
 }
@@ -149,7 +161,7 @@ fn action_button(label: &str, action: Action) -> impl Scene {
     bsn! {
         Button
         ButtonAction(action)
-        Node { flex_grow: 1.0, flex_basis: px(0), min_height: px(34), padding: UiRect::all(px(8)),
+        Node { flex_grow: 1.0, flex_basis: px(0), min_height: px(44), padding: UiRect::all(px(8)),
             border: px(1), border_radius: BorderRadius::all(px(5)), justify_content: JustifyContent::Center, align_items: AlignItems::Center }
         BorderColor::all(MUTED)
         BackgroundColor(Color::srgb(0.12,0.21,0.24))
@@ -159,6 +171,7 @@ fn action_button(label: &str, action: Action) -> impl Scene {
                 Action::Command(command) => { commands.trigger(command.clone()); }
                 Action::Toggle => { commands.trigger(TogglePlanning); }
                 Action::Primary => { commands.trigger(primary_command(&session)); }
+                Action::Notebook => { commands.trigger(ToggleNotebook); }
             }
         })
         Children [ Text(label) ButtonLabel(label_action) TextFont { font_size: px(13) } TextColor(PAPER) ]
@@ -187,19 +200,24 @@ fn turn_badge(id: u8) -> impl Scene {
 fn panel() -> impl Scene {
     bsn! {
         Node {position_type:PositionType::Absolute,right:px(24),top:px(20),bottom:px(20),width:px(360),flex_direction:FlexDirection::Column,row_gap:px(8)}
+        ResponsiveNode::Panel
         Children [
-            Text("") CaseText::TurnTitle TextFont {font_size:px(21)} TextColor(GOLD)
+            Text("") CaseText::TurnTitle ResponsiveNode::TurnTitle TextFont {font_size:px(21)} TextColor(GOLD)
             --
             Text("") CaseText::TurnStatus TextFont {font_size:px(15)} TextColor(PAPER)
             --
-            @action_button("End turn / E",Action::Primary)
-            Node {flex_grow:0.0,flex_basis:Val::Auto,flex_shrink:0.0}
-            --
-            Text("") CaseText::TurnRules TextFont {font_size:px(12)} TextColor(MUTED)
-            --
-            Text("TURN ORDER / advances when you end your turn") TextFont {font_size:px(10)} TextColor(MUTED)
-            --
             Node {column_gap:px(8),flex_shrink:0.0}
+            Children [
+                @action_button("End turn / E",Action::Primary)
+                --
+                @action_button("Notes",Action::Notebook) ResponsiveNode::CompactOnly
+            ]
+            --
+            Text("") CaseText::TurnRules ResponsiveNode::DesktopOnly TextFont {font_size:px(12)} TextColor(MUTED)
+            --
+            Text("TURN ORDER / advances when you end your turn") ResponsiveNode::DesktopOnly TextFont {font_size:px(10)} TextColor(MUTED)
+            --
+            Node {column_gap:px(8),flex_shrink:0.0} ResponsiveNode::DesktopOnly
             Children [@turn_badge(0) -- @turn_badge(1) -- @turn_badge(2) -- @turn_badge(3)]
             --
             Text("") CaseText::Briefing TextFont {font_size:px(13)} TextColor(PAPER)
@@ -216,15 +234,25 @@ fn panel() -> impl Scene {
             --
             Text("") CaseText::Verdict TextFont {font_size:px(13)} TextColor(PAPER)
             --
-            Text("") CaseText::Investigator TextFont {font_size:px(12)} TextColor(GOLD)
-            --
-            Node {flex_grow:1.0,min_height:px(0),overflow:Overflow::scroll_y(),padding:UiRect::right(px(8))}
-            NotebookScroll
-            Children [Text("") CaseText::Notebook TextFont {font_size:px(14)} TextColor(PAPER)]
+            Node {flex_direction:FlexDirection::Column, row_gap:px(8), flex_grow:1.0,min_height:px(0)}
+            ResponsiveNode::Notebook GlobalZIndex(5) BackgroundColor(Color::NONE)
+            Children [
+                @action_button("Back to map",Action::Notebook) ResponsiveNode::CompactOnly
+                Node {flex_grow:0.0,flex_basis:Val::Auto,flex_shrink:0.0}
+                --
+                Text("") CaseText::Investigator TextFont {font_size:px(12)} TextColor(GOLD)
+                --
+                Node {flex_grow:1.0,min_height:px(0),overflow:Overflow::scroll_y(),padding:UiRect::right(px(8))}
+                NotebookScroll
+                on(scroll_notebook)
+                on(drag_notebook)
+                Children [Text("") CaseText::Notebook TextFont {font_size:px(14)} TextColor(PAPER)]
+            ]
             --
             Text("Move: Q W / A D / Z X   I: investigate
 P: sketch/move   Enter: submit   E: end turn
 Backspace: undo   ?: witness   R: reset")
+            ResponsiveNode::DesktopOnly
             TextFont {font_size:px(10)} TextColor(MUTED)
         ]
     }
@@ -276,6 +304,7 @@ fn sync_case_ui(
     mystery: Res<Mystery>,
     investigation: Res<Investigation>,
     mut mode: ResMut<PlanningMode>,
+    layout: Res<BoardLayout>,
     mut texts: Query<(&CaseText, &mut Text, &mut TextColor)>,
     mut buttons: Query<(&TurnBadge, &mut BackgroundColor)>,
 ) {
@@ -296,6 +325,20 @@ fn sync_case_ui(
     }
     for (kind, mut text, mut color) in &mut texts {
         let value = match kind {
+            CaseText::TurnTitle if layout.compact => match session.phase {
+                TurnPhase::Playing => format!(
+                    "{}'S TURN",
+                    PLAYER_NAMES[session.selected_player as usize].to_uppercase()
+                ),
+                TurnPhase::Handoff => format!(
+                    "PASS TO {}",
+                    PLAYER_NAMES[session.selected_player as usize].to_uppercase()
+                ),
+                TurnPhase::Finished => format!(
+                    "{} WINS",
+                    PLAYER_NAMES[session.selected_player as usize].to_uppercase()
+                ),
+            },
             CaseText::TurnTitle => match session.phase {
                 TurnPhase::Playing => format!(
                     "PLAYER {} / {}'S TURN",
@@ -313,6 +356,16 @@ fn sync_case_ui(
                 ),
             },
             CaseText::TurnStatus => match session.phase {
+                TurnPhase::Playing if layout.compact => format!(
+                    "Round {} / {} action{} left",
+                    session.round,
+                    session.actions_remaining,
+                    if session.actions_remaining == 1 {
+                        ""
+                    } else {
+                        "s"
+                    }
+                ),
                 TurnPhase::Playing if session.actions_remaining == 0 => {
                     format!("Round {} / No actions left. End your turn.", session.round)
                 }
@@ -340,6 +393,14 @@ Begin turn when they are ready to see their notes.",
                     "The first investigator to submit the exact route wins.".into()
                 }
             },
+            CaseText::Briefing if layout.compact => format!(
+                "Bank {},{} -> Airport {},{}\n{} tiles / no repeats",
+                briefing.bank.q,
+                briefing.bank.r,
+                briefing.airport.q,
+                briefing.airport.r,
+                briefing.route_length
+            ),
             CaseText::Briefing => format!(
                 "{}\nBank {},{} -> Airport {},{}\nExactly {} tiles including endpoints. No repeats.",
                 briefing.title,
@@ -366,7 +427,7 @@ Begin turn when they are ready to see their notes.",
                 } else if session.actions_remaining == 0 && !mode.0 {
                     "NO ACTIONS / sketch freely or end turn".into()
                 } else if mode.0 {
-                    "SKETCH MODE / click adjacent hexes".into()
+                    "SKETCH / select adjacent hexes".into()
                 } else {
                     "MOVE MODE / visit ? witnesses".into()
                 }
@@ -434,6 +495,7 @@ Begin turn when they are ready to see their notes.",
 fn sync_action_buttons(
     case: CaseInteraction,
     board: Res<Board>,
+    layout: Res<BoardLayout>,
     players: Query<(&robbers_types::Investigator, &Hex)>,
     mut buttons: Query<(
         Entity,
@@ -456,6 +518,7 @@ fn sync_action_buttons(
     for (entity, action, mut background, mut border, disabled) in &mut buttons {
         let enabled = match &action.0 {
             Action::Primary => true,
+            Action::Notebook => session.phase != TurnPhase::Handoff,
             _ if session.phase != TurnPhase::Playing => false,
             Action::Toggle => true,
             Action::Command(GameCommand::Investigate {}) => {
@@ -511,6 +574,8 @@ fn sync_action_buttons(
         };
         if matches!(action.0, Action::Primary) {
             let label = match session.phase {
+                TurnPhase::Playing if layout.compact => "End turn".into(),
+                TurnPhase::Handoff if layout.compact => "Begin turn".into(),
                 TurnPhase::Playing if session.actions_remaining > 0 => {
                     format!("End turn / E ({} unused)", session.actions_remaining)
                 }
@@ -524,43 +589,88 @@ fn sync_action_buttons(
             if text.0 != label {
                 text.0 = label;
             }
+        } else if matches!(action.0, Action::Toggle) {
+            text.0 = if case.planning() {
+                "Move mode"
+            } else {
+                "Sketch route"
+            }
+            .into();
+        } else if let Action::Command(command) = &action.0 {
+            let label = match command {
+                GameCommand::Investigate {} => Some(if layout.compact {
+                    "Investigate 1"
+                } else {
+                    "Investigate (1)"
+                }),
+                GameCommand::PlanUndo {} => Some(if layout.compact {
+                    "Undo"
+                } else {
+                    "Undo (free)"
+                }),
+                GameCommand::PlanClear {} => Some(if layout.compact {
+                    "Clear"
+                } else {
+                    "Clear (free)"
+                }),
+                GameCommand::SubmitRoute {} => Some(if layout.compact {
+                    "Submit 1"
+                } else {
+                    "Submit (1)"
+                }),
+                _ => None,
+            };
+            if let Some(label) = label {
+                text.0 = label.into();
+            }
         }
     }
 }
 
+// Pointer events bubble from notebook text to the scroll container. This works
+// with either the desktop panel or the compact overlay, without screen hit tests.
 fn scroll_notebook(
-    mut wheel: MessageReader<MouseWheel>,
-    windows: Query<&Window>,
-    ui_scale: Res<UiScale>,
-    session: Res<Session>,
-    mut last_player: Local<Option<u8>>,
+    mut event: On<PointerScroll>,
     mut panels: Query<(&ComputedNode, &mut ScrollPosition), With<NotebookScroll>>,
 ) {
+    let delta = if event.unit == MouseScrollUnit::Line {
+        -event.y * 40.0
+    } else {
+        -event.y
+    };
+    for (computed, mut position) in &mut panels {
+        scroll_by(computed, &mut position, delta);
+    }
+    event.propagate(false);
+}
+
+fn drag_notebook(
+    mut event: On<PointerDrag>,
+    ui_scale: Res<UiScale>,
+    mut panels: Query<(&ComputedNode, &mut ScrollPosition), With<NotebookScroll>>,
+) {
+    for (computed, mut position) in &mut panels {
+        scroll_by(computed, &mut position, -event.delta.y / ui_scale.0);
+    }
+    event.propagate(false);
+}
+
+fn scroll_by(computed: &ComputedNode, position: &mut ScrollPosition, delta: f32) {
+    let max = ((computed.content_size().y - computed.size().y) * computed.inverse_scale_factor())
+        .max(0.0);
+    position.0.y = (position.0.y + delta).clamp(0.0, max);
+}
+
+fn reset_notebook_scroll(
+    session: Res<Session>,
+    mut last_player: Local<Option<u8>>,
+    mut panels: Query<&mut ScrollPosition, With<NotebookScroll>>,
+) {
     if *last_player != Some(session.selected_player) {
-        for (_, mut position) in &mut panels {
+        for mut position in &mut panels {
             position.0.y = 0.0;
         }
         *last_player = Some(session.selected_player);
-    }
-    let over_panel = windows.single().ok().is_some_and(|w| {
-        w.cursor_position()
-            .is_some_and(|p| p.x > w.width() - 410.0 * ui_scale.0)
-    });
-    for event in wheel.read() {
-        if !over_panel {
-            continue;
-        }
-        let delta = if event.unit == MouseScrollUnit::Line {
-            -event.y * 40.0
-        } else {
-            -event.y
-        };
-        for (computed, mut position) in &mut panels {
-            let max = ((computed.content_size().y - computed.size().y)
-                * computed.inverse_scale_factor())
-            .max(0.0);
-            position.0.y = (position.0.y + delta).clamp(0.0, max);
-        }
     }
 }
 

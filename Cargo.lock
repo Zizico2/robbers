@@ -4594,13 +4594,31 @@ name = "robbers"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "robbers-app",
  "robbers-case",
  "robbers-command",
  "robbers-game",
  "robbers-headless",
  "robbers-validator",
- "robbers-view",
  "serde_json",
+]
+
+[[package]]
+name = "robbers-android"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "robbers-app",
+]
+
+[[package]]
+name = "robbers-app"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "robbers-command",
+ "robbers-game",
+ "robbers-view",
 ]
 
 [[package]]
