@@ -6,6 +6,12 @@ Android is an arm64 NativeActivity APK for Android 8+ (API 26), with sensor
 landscape orientation. It can rotate between the two landscape orientations.
 It is a sideloadable debug build, not a Play Store release.
 
+Android disables wgpu shader debug metadata while retaining its other renderer
+settings. Some PowerVR Vulkan drivers abort on that metadata during shader
+compilation (`spvcompiler: unexpected source language`), even in a debug-signed
+APK. This is a workaround for that startup crash; device verification is still
+required. See the [matching driver report](https://github.com/CyberTimon/RapidRAW/issues/1723).
+
 The compact layout is selected below 650 logical pixels in height. It keeps
 controls at normal text size with 44-pixel buttons, and **Notes** opens a
 scrollable overlay over the board. Drag the evidence to scroll and use **Back
